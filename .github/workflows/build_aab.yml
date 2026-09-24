@@ -30,6 +30,9 @@ jobs:
         run: |
           rm -rf android
           flutter create . --platforms=android --org com.smartloan --project-name smart_loan_planner
+          # Remove auto-generated counter widget test from flutter create
+          rm -f test/widget_test.dart
+          
           # Add AdMob App ID to AndroidManifest.xml
           python3 -c "
           manifest = 'android/app/src/main/AndroidManifest.xml'
@@ -61,7 +64,7 @@ jobs:
         run: flutter pub get
 
       - name: Run Mathematical Engine Tests
-        run: flutter test
+        run: flutter test test/calculator_service_test.dart
 
       - name: Build Android App Bundle (.aab)
         run: flutter build appbundle --release
