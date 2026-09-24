@@ -3,7 +3,7 @@ name: Build Release Android App Bundle (AAB)
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch: # Allows manual one-click trigger from GitHub Actions UI
+  workflow_dispatch:
 
 jobs:
   build:
@@ -26,6 +26,37 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Generate Android Scaffolding & Native Resources
+        run: |
+          rm -rf android
+          flutter create . --platforms=android --org com.smartloan --project-name smart_loan_planner
+          # Add AdMob App ID to AndroidManifest.xml
+          python3 -c "
+          manifest = 'android/app/src/main/AndroidManifest.xml'
+          with open(manifest, 'r') as f:
+              content = f.read()
+          admob_meta = '''
+                  <meta-data
+                      android:name=\"com.google.android.gms.ads.APPLICATION_ID\"
+                      android:value=\"ca-app-pub-3940256099942544~3347511713\"/>
+          '''
+          content = content.replace('<application', '<application' + admob_meta, 1)
+          with open(manifest, 'w') as f:
+              f.write(content)
+          print('AdMob metadata successfully injected')
+          "
+          # Ensure minSdk is at least 21 for google_mobile_ads
+          python3 -c "
+          gradle_file = 'android/app/build.gradle'
+          with open(gradle_file, 'r') as f:
+              c = f.read()
+          c = c.replace('minSdkVersion = flutter.minSdkVersion', 'minSdkVersion = 21')
+          c = c.replace('minSdk = flutter.minSdkVersion', 'minSdk = 21')
+          with open(gradle_file, 'w') as f:
+              f.write(c)
+          print('minSdk updated to 21')
+          "
+
       - name: Install Dependencies
         run: flutter pub get
 
@@ -33,7 +64,7 @@ jobs:
         run: flutter test
 
       - name: Build Android App Bundle (.aab)
-        run: flutter build appbundle --release --no-pub
+        run: flutter build appbundle --release
 
       - name: Upload Production Release AAB as Artifact
         uses: actions/upload-artifact@v4
